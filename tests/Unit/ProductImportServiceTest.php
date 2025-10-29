@@ -40,6 +40,10 @@ test('it uses correct Excel driver for CSV queue import', function () {
 
 test('it logs error and rethrows exception when queue import fails', function () {
     // Arrange
+    Log::shouldReceive('info')
+        ->once()
+        ->with('ProductsImport constructor called', ['fileName' => 'file.csv']);
+    
     Log::shouldReceive('error')
         ->once()
         ->with('CSV Import failed: Import failed');
@@ -60,6 +64,10 @@ test('it logs error and rethrows exception when queue import fails', function ()
 
 test('it handles different types of exceptions', function () {
     // Arrange
+    Log::shouldReceive('info')
+        ->once()
+        ->with('ProductsImport constructor called', ['fileName' => 'file.csv']);
+    
     Log::shouldReceive('error')
         ->once()
         ->with('CSV Import failed: Runtime error occurred');
@@ -103,8 +111,12 @@ test('it passes correct file path to Excel queue import', function () {
     Excel::assertQueued($customFilePath);
 });
 
-test('it does not log anything when queue import succeeds', function () {
+test('it does not log errors when queue import succeeds', function () {
     // Arrange
+    Log::shouldReceive('info')
+        ->once()
+        ->with('ProductsImport constructor called', ['fileName' => 'file.csv']);
+    
     Log::shouldReceive('error')->never();
     Excel::fake();
     

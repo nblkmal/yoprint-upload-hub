@@ -6,23 +6,28 @@ use App\Events\FileFailedEvent;
 use App\Events\FileUploadedEvent;
 use App\Models\History;
 use App\Models\Product;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithUpserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterImport;
 use Maatwebsite\Excel\Events\ImportFailed;
 
-class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkReading, WithBatchInserts, ShouldQueue
+class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkReading, WithBatchInserts, WithEvents, ShouldQueue
 {
     private static $currentFileName;
+    private $fileName;
     
     public function __construct(string $fileName = null)
     {
+        $this->fileName = $fileName;
         if ($fileName) {
             self::$currentFileName = $fileName;
+            Log::info('ProductsImport constructor called', ['fileName' => $fileName]);
         }
     }
     public function model(array $row)
@@ -64,6 +69,8 @@ class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkR
 
     public static function afterImport(AfterImport $event)
     {
+        Log::info('ProductsImport::afterImport called', ['currentFileName' => self::$currentFileName]);
+        
         $fileName = self::$currentFileName;
         
         if ($fileName) {
@@ -84,6 +91,8 @@ class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkR
 
     public static function failed(ImportFailed $event)
     {
+        Log::info('ProductsImport::failed called', ['currentFileName' => self::$currentFileName]);
+        
         $fileName = self::$currentFileName;
         
         if ($fileName) {
@@ -102,6 +111,8 @@ class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkR
 
     public function registerEvents(): array
     {
+        Log::info('ProductsImport::registerEvents called');
+        
         return [
             AfterImport::class => [self::class, 'afterImport'],
             ImportFailed::class => [self::class, 'failed'],
