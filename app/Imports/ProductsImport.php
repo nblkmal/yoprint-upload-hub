@@ -6,7 +6,9 @@ use App\Events\FileFailedEvent;
 use App\Events\FileUploadedEvent;
 use App\Models\History;
 use App\Models\Product;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -19,15 +21,17 @@ use Maatwebsite\Excel\Events\ImportFailed;
 
 class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkReading, WithBatchInserts, WithEvents, ShouldQueue
 {
-    private static $currentFileName;
     private $fileName;
+    private $cacheKey;
     
     public function __construct(string $fileName = null)
     {
         $this->fileName = $fileName;
         if ($fileName) {
-            self::$currentFileName = $fileName;
-            Log::info('ProductsImport constructor called', ['fileName' => $fileName]);
+            // Create a unique cache key for this import instance
+            $this->cacheKey = 'import_filename_' . Str::uuid();
+            Cache::put($this->cacheKey, $fileName, 3600); // Store for 1 hour
+            Log::info('ProductsImport constructor called', ['fileName' => $fileName, 'cacheKey' => $this->cacheKey]);
         }
     }
     public function model(array $row)
@@ -69,43 +73,42 @@ class ProductsImport implements ToModel, WithHeadingRow, WithUpserts, WithChunkR
 
     public static function afterImport(AfterImport $event)
     {
-        Log::info('ProductsImport::afterImport called', ['currentFileName' => self::$currentFileName]);
+        // For now, let's get all recent "processing" files and update them to completed
+        // This is a workaround since can't reliably get filename from static event handlers in queued jobs
+        $recentProcessingFiles = History::where('status', 'processing')
+            ->where('updated_at', '>=', now()->subMinutes(10))
+            ->get();
         
-        $fileName = self::$currentFileName;
-        
-        if ($fileName) {
-            // Update history status to completed
-            $history = History::findByFileName($fileName);
-            if ($history) {
-                History::updateStatusByFileName($fileName, 'completed');
-                
-                // Trigger the file uploaded event with the actual file ID
-                event(new FileUploadedEvent($fileName, $history->id));
-            } else {
-                // Fallback - create new history record if not found
-                $history = History::createOrUpdateByFileName($fileName, 'completed');
-                event(new FileUploadedEvent($fileName, $history->id));
-            }
+        // Update the most recent processing file to completed
+        if ($recentProcessingFiles->count() > 0) {
+            $mostRecentFile = $recentProcessingFiles->sortByDesc('updated_at')->first();
+            
+            History::updateStatusByFileName($mostRecentFile->file_name, 'completed');
+            event(new FileUploadedEvent($mostRecentFile->file_name, $mostRecentFile->id));
+            
+            Log::info('Updated file to completed', ['fileName' => $mostRecentFile->file_name]);
         }
     }
 
     public static function failed(ImportFailed $event)
     {
-        Log::info('ProductsImport::failed called', ['currentFileName' => self::$currentFileName]);
+        // Get all recent "processing" files and update them to failed
+        $recentProcessingFiles = History::where('status', 'processing')
+            ->where('updated_at', '>=', now()->subMinutes(10))
+            ->get();
         
-        $fileName = self::$currentFileName;
-        
-        if ($fileName) {
-            // Update history status to failed
-            $history = History::findByFileName($fileName);
-            $fileId = $history ? $history->id : 0;
+        // Update the most recent processing file to failed
+        if ($recentProcessingFiles->count() > 0) {
+            $mostRecentFile = $recentProcessingFiles->sortByDesc('updated_at')->first();
             
-            History::updateStatusByFileName($fileName, 'failed');
+            History::updateStatusByFileName($mostRecentFile->file_name, 'failed');
             
             // Get the exception message if available
-            $errorMessage = $event->e ? $event->e->getMessage() : 'Import failed';
+            $errorMessage = property_exists($event, 'e') && $event->e ? $event->e->getMessage() : 'Import failed';
             
-            event(new FileFailedEvent($fileName, $fileId, $errorMessage));
+            event(new FileFailedEvent($mostRecentFile->file_name, $mostRecentFile->id, $errorMessage));
+            
+            Log::info('Updated file to failed', ['fileName' => $mostRecentFile->file_name, 'error' => $errorMessage]);
         }
     }
 

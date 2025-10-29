@@ -42,7 +42,7 @@ test('it logs error and rethrows exception when queue import fails', function ()
     // Arrange
     Log::shouldReceive('info')
         ->once()
-        ->with('ProductsImport constructor called', ['fileName' => 'file.csv']);
+        ->with('ProductsImport constructor called', \Mockery::type('array'));
     
     Log::shouldReceive('error')
         ->once()
@@ -66,7 +66,7 @@ test('it handles different types of exceptions', function () {
     // Arrange
     Log::shouldReceive('info')
         ->once()
-        ->with('ProductsImport constructor called', ['fileName' => 'file.csv']);
+        ->with('ProductsImport constructor called', \Mockery::type('array'));
     
     Log::shouldReceive('error')
         ->once()
@@ -115,7 +115,7 @@ test('it does not log errors when queue import succeeds', function () {
     // Arrange
     Log::shouldReceive('info')
         ->once()
-        ->with('ProductsImport constructor called', ['fileName' => 'file.csv']);
+        ->with('ProductsImport constructor called', \Mockery::type('array'));
     
     Log::shouldReceive('error')->never();
     Excel::fake();

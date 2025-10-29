@@ -35,7 +35,7 @@ The app does the following. Users will be able to upload CSV files into our syst
 - Make sure to run `./vendor/bin/sail npm run dev` to compile the frontend assets.
 - Do also run `./vendor/bin/sail artisan horizon` to make sure the queue is running. You can also visit http://localhost:80/horizon to see the horizon dashboard.
 - Access the app in your browser at http://localhost:80/upload-file. As for now Im skipping the authentication for demo purpose.
-- Upload the file and see the magic happen :)
+- Upload the file and see the magic happen :). For now please upload one file at a time since there are few complication to be handled.
 
 - Oh if needed, you can run `./vendor/bin/sail artisan test` to run the tests to make sure everything is working as expected.
 
