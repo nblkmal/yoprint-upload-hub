@@ -11,7 +11,8 @@ class ProductImportService
     public function import(string $filePath): void
     {
         try {
-            Excel::queueImport(new ProductsImport, $filePath, null, \Maatwebsite\Excel\Excel::CSV);
+            $fileName = basename($filePath);
+            Excel::queueImport(new ProductsImport($fileName), $filePath, null, \Maatwebsite\Excel\Excel::CSV);
         } catch (\Throwable $e) {
             Log::error('CSV Import failed: ' . $e->getMessage());
             throw $e;
