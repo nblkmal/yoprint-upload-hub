@@ -12,7 +12,7 @@ beforeEach(function () {
     $this->filePath = '/path/to/test/file.csv';
 });
 
-test('it can import a CSV file successfully', function () {
+test('it can queue import a CSV file successfully', function () {
     // Arrange
     Excel::fake();
     
@@ -20,12 +20,12 @@ test('it can import a CSV file successfully', function () {
     $this->service->import($this->filePath);
     
     // Assert
-    Excel::assertImported($this->filePath, function (ProductsImport $import) {
+    Excel::assertQueued($this->filePath, function (ProductsImport $import) {
         return true;
     });
 });
 
-test('it uses correct Excel driver for CSV import', function () {
+test('it uses correct Excel driver for CSV queue import', function () {
     // Arrange
     Excel::fake();
     
@@ -33,19 +33,19 @@ test('it uses correct Excel driver for CSV import', function () {
     $this->service->import($this->filePath);
     
     // Assert
-    Excel::assertImported($this->filePath, function (ProductsImport $import) {
+    Excel::assertQueued($this->filePath, function (ProductsImport $import) {
         return true;
     }, null, \Maatwebsite\Excel\Excel::CSV);
 });
 
-test('it logs error and rethrows exception when import fails', function () {
+test('it logs error and rethrows exception when queue import fails', function () {
     // Arrange
     Log::shouldReceive('error')
         ->once()
         ->with('CSV Import failed: Import failed');
     
     // Mock Excel facade to throw exception
-    Excel::shouldReceive('import')
+    Excel::shouldReceive('queueImport')
         ->once()
         ->andThrow(new \Exception('Import failed'));
     
@@ -65,7 +65,7 @@ test('it handles different types of exceptions', function () {
         ->with('CSV Import failed: Runtime error occurred');
     
     // Mock Excel facade to throw RuntimeException
-    Excel::shouldReceive('import')
+    Excel::shouldReceive('queueImport')
         ->once()
         ->andThrow(new \RuntimeException('Runtime error occurred'));
     
@@ -86,12 +86,12 @@ test('it creates ProductsImport instance correctly', function () {
     $this->service->import($this->filePath);
     
     // Assert
-    Excel::assertImported($this->filePath, function ($import) {
+    Excel::assertQueued($this->filePath, function ($import) {
         return $import instanceof ProductsImport;
     });
 });
 
-test('it passes correct file path to Excel import', function () {
+test('it passes correct file path to Excel queue import', function () {
     // Arrange
     Excel::fake();
     $customFilePath = '/custom/path/to/file.csv';
@@ -100,10 +100,10 @@ test('it passes correct file path to Excel import', function () {
     $this->service->import($customFilePath);
     
     // Assert
-    Excel::assertImported($customFilePath);
+    Excel::assertQueued($customFilePath);
 });
 
-test('it does not log anything when import succeeds', function () {
+test('it does not log anything when queue import succeeds', function () {
     // Arrange
     Log::shouldReceive('error')->never();
     Excel::fake();
@@ -113,4 +113,17 @@ test('it does not log anything when import succeeds', function () {
     
     // Assert - No exception thrown and no error logged
     expect(true)->toBeTrue();
+});
+
+test('it verifies ProductsImport implements ShouldQueue interface', function () {
+    // Arrange
+    Excel::fake();
+    
+    // Act
+    $this->service->import($this->filePath);
+    
+    // Assert
+    Excel::assertQueued($this->filePath, function ($import) {
+        return $import instanceof \Illuminate\Contracts\Queue\ShouldQueue;
+    });
 });
