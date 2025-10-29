@@ -37,6 +37,8 @@ The app does the following. Users will be able to upload CSV files into our syst
 - Access the app in your browser at http://localhost:80/upload-file. As for now Im skipping the authentication for demo purpose.
 - Upload the file and see the magic happen :)
 
+- Oh if needed, you can run `./vendor/bin/sail artisan test` to run the tests to make sure everything is working as expected.
+
 
 ## Example from Horizon Log for the upload process and status being handled
 ```
